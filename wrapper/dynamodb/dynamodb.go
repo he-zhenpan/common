@@ -3076,6 +3076,10 @@ func (d *DynamoDB) queryItemsWithTrace(resultItemsPtr interface{},
 			return nil
 		}
 
+		if len(result.Items) > 0 {
+			log.Println("QueryItems Result Count: ", result.Items[0])
+		}
+
 		// unmarshal result items to target object map
 		if err = dynamodbattribute.UnmarshalListOfMaps(result.Items, resultItemsPtr); err != nil {
 			ddbErr = d.handleError(err, "Dynamo QueryItems Failed: (Unmarshal Result Items)")
@@ -3491,6 +3495,8 @@ func (d *DynamoDB) QueryPagedItemsWithRetry(maxRetries uint,
 	var pagedSliceTemp reflect.Value
 
 	for {
+		log.Println("QueryPagedItemsWithRetry1111: Querying Items")
+
 		// each time queried, we process up to 25 pages with each page up to 100 items,
 		// if there are more data, the prevEvalKey will contain value,
 		// so the for loop will continue query again until prevEvalKey is nil,
@@ -3502,6 +3508,7 @@ func (d *DynamoDB) QueryPagedItemsWithRetry(maxRetries uint,
 			// error
 			return nil, fmt.Errorf("QueryPagedItemsWithRetry Failed: %s", e)
 		} else {
+			log.Println("pagedSlicePtr value:", reflect.ValueOf(pagedSlicePtr).Elem())
 			// success
 			//var valTarget reflect.Value
 
