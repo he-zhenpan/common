@@ -3493,6 +3493,11 @@ func (d *DynamoDB) QueryPagedItemsWithRetry(maxRetries uint,
 	}
 
 	var pagedSliceTemp reflect.Value
+	if reflect.TypeOf(resultSlicePtr).Kind() == reflect.Ptr {
+		pagedSliceTemp = reflect.ValueOf(resultSlicePtr).Elem()
+	} else {
+		pagedSliceTemp = reflect.ValueOf(resultSlicePtr)
+	}
 
 	for {
 		log.Println("QueryPagedItemsWithRetry1111: Querying Items")
