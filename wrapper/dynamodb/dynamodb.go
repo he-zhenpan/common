@@ -3516,15 +3516,18 @@ func (d *DynamoDB) QueryPagedItemsWithRetry(maxRetries uint,
 			// success
 			//var valTarget reflect.Value
 
-			//if reflect.TypeOf(resultSlicePtr).Kind() == reflect.Ptr {
-			//	valTarget = reflect.ValueOf(resultSlicePtr).Elem()
-			//} else {
-			//	valTarget = reflect.ValueOf(resultSlicePtr)
-			//}
+			aaaa := reflect.ValueOf(pagedSlicePtr).Elem()
+
+			if reflect.TypeOf(aaaa).Kind() == reflect.Ptr {
+				aaaa = reflect.ValueOf(aaaa).Elem()
+			} else {
+				aaaa = reflect.ValueOf(aaaa)
+			}
 
 			//val := reflect.AppendSlice(valTarget, reflect.ValueOf(pagedSlicePtr).Elem())
 			//resultSlicePtr = val.Interface()
-			pagedSliceTemp = reflect.AppendSlice(pagedSliceTemp, reflect.ValueOf(pagedSlicePtr).Elem())
+
+			pagedSliceTemp = reflect.AppendSlice(pagedSliceTemp, aaaa)
 
 			if prevEvalKey == nil {
 				break
