@@ -3501,15 +3501,15 @@ func (d *DynamoDB) QueryPagedItemsWithRetry(maxRetries uint,
 	for {
 		// &[]*model.PaymentDeviceInventoryData{}
 		log.Println("QueryPagedItemsWithRetry1111: Querying Items")
-		originalSliceValue := reflect.ValueOf(pagedSlicePtr).Elem()
-		newPagedSlice := reflect.MakeSlice(originalSliceValue.Type(), 0, 0)
-		newPagedSlicePtr := reflect.New(newPagedSlice.Type()).Interface()
+		//originalSliceValue := reflect.ValueOf(pagedSlicePtr).Elem()
+		//newPagedSlice := reflect.MakeSlice(originalSliceValue.Type(), 0, 0)
+		//newPagedSlicePtr := reflect.New(newPagedSlice.Type()).Interface()
 
 		// each time queried, we process up to 25 pages with each page up to 100 items,
 		// if there are more data, the prevEvalKey will contain value,
 		// so the for loop will continue query again until prevEvalKey is nil,
 		// this method will retrieve all filtered data from data store, but may take longer time if there are more data
-		if prevEvalKey, e = d.QueryItemsWithRetry(maxRetries, newPagedSlicePtr, timeOutDuration, nil, indexNamePtr,
+		if prevEvalKey, e = d.QueryItemsWithRetry(maxRetries, pagedSlicePtr, timeOutDuration, nil, indexNamePtr,
 			aws.Int64(pageLimit), true, aws.Int64(pagedQueryPageCountLimit), prevEvalKey,
 			keyConditionExpression, nil, expressionAttributeValues,
 			filterConditionExpression); e != nil {
@@ -3531,7 +3531,7 @@ func (d *DynamoDB) QueryPagedItemsWithRetry(maxRetries uint,
 			//val := reflect.AppendSlice(valTarget, reflect.ValueOf(pagedSlicePtr).Elem())
 			//resultSlicePtr = val.Interface()
 
-			pagedSliceTemp = reflect.AppendSlice(pagedSliceTemp, reflect.ValueOf(newPagedSlicePtr).Elem())
+			pagedSliceTemp = reflect.AppendSlice(pagedSliceTemp, reflect.ValueOf(pagedSlicePtr).Elem())
 
 			if prevEvalKey == nil {
 				break
