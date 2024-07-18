@@ -3492,12 +3492,13 @@ func (d *DynamoDB) QueryPagedItemsWithRetry(maxRetries uint,
 		indexNamePtr = nil
 	}
 
-	var pagedSliceTemp reflect.Value
-	if reflect.TypeOf(resultSlicePtr).Kind() == reflect.Ptr {
-		pagedSliceTemp = reflect.ValueOf(resultSlicePtr).Elem()
-	} else {
-		pagedSliceTemp = reflect.ValueOf(resultSlicePtr)
-	}
+	//var pagedSliceTemp reflect.Value
+	//if reflect.TypeOf(resultSlicePtr).Kind() == reflect.Ptr {
+	//	pagedSliceTemp = reflect.ValueOf(resultSlicePtr).Elem()
+	//} else {
+	//	pagedSliceTemp = reflect.ValueOf(resultSlicePtr)
+	//}
+	var pagedSliceTemp []interface{}
 
 	for {
 		log.Println("QueryPagedItemsWithRetry1111: Querying Items")
@@ -3516,18 +3517,19 @@ func (d *DynamoDB) QueryPagedItemsWithRetry(maxRetries uint,
 			// success
 			//var valTarget reflect.Value
 
-			aaaa := reflect.ValueOf(pagedSlicePtr).Elem()
-
-			if reflect.TypeOf(aaaa).Kind() == reflect.Ptr {
-				aaaa = reflect.ValueOf(aaaa).Elem()
-			} else {
-				aaaa = reflect.ValueOf(aaaa)
+			var sliceContent []interface{}
+			if reflect.ValueOf(pagedSlicePtr).Elem().Kind() == reflect.Slice {
+				sliceContent = make([]interface{}, reflect.ValueOf(pagedSlicePtr).Elem().Len())
+				for i := 0; i < reflect.ValueOf(pagedSlicePtr).Elem().Len(); i++ {
+					sliceContent[i] = reflect.ValueOf(pagedSlicePtr).Elem().Index(i).Interface()
+				}
 			}
+			pagedSliceTemp = append(pagedSliceTemp, sliceContent...)
 
 			//val := reflect.AppendSlice(valTarget, reflect.ValueOf(pagedSlicePtr).Elem())
 			//resultSlicePtr = val.Interface()
 
-			pagedSliceTemp = reflect.AppendSlice(pagedSliceTemp, aaaa)
+			//pagedSliceTemp = reflect.AppendSlice(pagedSliceTemp, aaaa)
 
 			if prevEvalKey == nil {
 				break
@@ -3539,7 +3541,7 @@ func (d *DynamoDB) QueryPagedItemsWithRetry(maxRetries uint,
 		}
 	}
 
-	resultSlicePtr = pagedSliceTemp.Interface()
+	resultSlicePtr = pagedSliceTemp
 
 	return resultSlicePtr, nil
 }
