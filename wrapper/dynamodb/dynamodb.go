@@ -3508,8 +3508,6 @@ func (d *DynamoDB) QueryPagedItemsWithRetry(maxRetries uint,
 			// error
 			return nil, fmt.Errorf("QueryPagedItemsWithRetry Failed: %s", e)
 		} else {
-			inn := reflect.ValueOf(pagedSlicePtr).Elem()
-			log.Println("pagedSlicePtr value:", inn)
 			// success
 			//var valTarget reflect.Value
 
@@ -3521,7 +3519,7 @@ func (d *DynamoDB) QueryPagedItemsWithRetry(maxRetries uint,
 
 			//val := reflect.AppendSlice(valTarget, reflect.ValueOf(pagedSlicePtr).Elem())
 			//resultSlicePtr = val.Interface()
-			pagedSliceTemp = reflect.AppendSlice(pagedSliceTemp, inn)
+			pagedSliceTemp = reflect.AppendSlice(pagedSliceTemp, reflect.ValueOf(pagedSlicePtr).Elem())
 
 			if prevEvalKey == nil {
 				break
