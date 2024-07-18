@@ -3501,7 +3501,8 @@ func (d *DynamoDB) QueryPagedItemsWithRetry(maxRetries uint,
 	for {
 		log.Println("QueryPagedItemsWithRetry1111: Querying Items")
 		originalSliceValue := reflect.ValueOf(pagedSlicePtr).Elem()
-		newPagedSlicePtr := reflect.MakeSlice(originalSliceValue.Type(), 0, 0)
+		newPagedSlice := reflect.MakeSlice(originalSliceValue.Type(), 0, 0)
+		newPagedSlicePtr := newPagedSlice.Addr().Interface()
 
 		// each time queried, we process up to 25 pages with each page up to 100 items,
 		// if there are more data, the prevEvalKey will contain value,
