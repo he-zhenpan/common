@@ -20,6 +20,7 @@ import (
 	"errors"
 	util "github.com/aldelo/common"
 	"github.com/spf13/viper"
+	"log"
 	"strings"
 	"time"
 )
@@ -50,6 +51,7 @@ type ViperConf struct {
 // Init will initialize config and readInConfig
 // if config file does not exist, false is returned
 func (v *ViperConf) Init() (bool, error) {
+	log.Println("Init Viper Config...")
 	// validate
 	if util.LenTrim(v.ConfigName) <= 0 && util.LenTrim(v.SpecificConfigFileFullPath) <= 0 {
 		return false, errors.New("Init Config Failed: " + "Either Config Name or Config Full Path is Required")
@@ -59,6 +61,7 @@ func (v *ViperConf) Init() (bool, error) {
 	if v.viperClient == nil {
 		v.viperClient = viper.New()
 	}
+	log.Println("Viper Config Created...")
 
 	// set viper properties
 	if util.LenTrim(v.SpecificConfigFileFullPath) <= 0 {
@@ -82,6 +85,7 @@ func (v *ViperConf) Init() (bool, error) {
 	} else {
 		v.viperClient.SetConfigFile(v.SpecificConfigFileFullPath)
 	}
+	log.Println("Viper Config Set...")
 
 	if v.UseAutomaticEnvVar {
 		v.viperClient.AutomaticEnv()
@@ -95,8 +99,10 @@ func (v *ViperConf) Init() (bool, error) {
 
 	v.viperClient.SetTypeByDefaultValue(true)
 
+	log.Println("Viper Config Properties Set/ before ReadInConfig...")
 	// read in config data
 	if err := v.viperClient.ReadInConfig(); err != nil {
+		log.Println("Viper Config ReadInConfig Error: ", err.Error())
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			// config file not found, ignore error
 			return false, nil
@@ -105,6 +111,7 @@ func (v *ViperConf) Init() (bool, error) {
 			return false, errors.New("Init Config Failed: (ReadInConfig Action) " + err.Error())
 		}
 	} else {
+		log.Println("Viper Config ReadInConfig Success...")
 		// read success
 		//v.viperClient.WatchConfig()
 		return true, nil
