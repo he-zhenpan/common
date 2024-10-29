@@ -834,6 +834,57 @@ func (k *KMS) EncryptViaCmkRsa2048(plainText string) (cipherText string, err err
 	return cipherText, nil
 }
 
+func (k *KMS) GetRSAPublicKey(alias string) (output *kms.GetPublicKeyOutput, err error) {
+	var segCtx context.Context
+	segCtx = nil
+
+	seg := xray.NewSegmentNullable("KMS-GetRSAPublicKey", k._parentSegment)
+
+	if seg != nil {
+		segCtx = seg.Ctx
+
+		defer seg.Close()
+		defer func() {
+			_ = seg.Seg.AddMetadata("KMS-GetRSAPublicKey-RSA-KMS-KeyName", k.RsaKmsKeyName)
+			if err != nil {
+				_ = seg.Seg.AddError(err)
+			}
+		}()
+	}
+
+	// validate
+	if k.kmsClient == nil {
+		err = errors.New("GetRSAPublicKey with KMS CMK Failed: " + "KMS Client is Required")
+		return nil, err
+	}
+
+	if alias == "" {
+		err = errors.New("GetRSAPublicKey with KMS CMK Failed: " + "Alias is Required")
+		return nil, err
+	}
+
+	var e error
+
+	aliasName := "alias/" + alias // Change to your desired alias name
+
+	if segCtx == nil {
+		output, err = k.kmsClient.GetPublicKey(&kms.GetPublicKeyInput{
+			KeyId: aws.String(aliasName),
+		})
+	} else {
+		output, err = k.kmsClient.GetPublicKeyWithContext(segCtx, &kms.GetPublicKeyInput{
+			KeyId: aws.String(aliasName),
+		})
+	}
+
+	if e != nil {
+		err = errors.New("GetRSAPublicKey with KMS CMK Failed: (RSA Key Delete Fail) " + e.Error())
+		return nil, err
+	}
+
+	return output, nil
+}
+
 // ReEncryptViaCmkRsa2048 will re-encrypt sourceCipherText using the new targetKmsKeyName via kms, (must be targeting rsa 2048 key)
 // the re-encrypted cipherText is then returned
 func (k *KMS) ReEncryptViaCmkRsa2048(sourceCipherText string, targetKmsKeyName string) (targetCipherText string, err error) {
