@@ -41,6 +41,11 @@ package kms
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	util "github.com/aldelo/common"
@@ -435,21 +440,21 @@ func (k *KMS) DecryptViaCmkAes256(cipherText string) (plainText string, err erro
 //		"Statement": []map[string]interface{}{
 //			{
 //				"Effect":    "Allow",
-//				"Principal": map[string]interface{}{"AWS": "arn:aws:iam::565261360522:user/sys-devop-ms-deploy"}, // Replace with your account ID
+//				"Principal": map[string]interface{}{"AWS": "arn:aws:iam::***************:user/xxxxxxxxxxxxxxxxxxx"}, // Replace with your account ID
 //				"Action":    "kms:*",
 //				"Resource":  "*",
 //			},
 //			{
 //				"Sid":       "Allow access for Key Administrators",
 //				"Effect":    "Allow",
-//				"Principal": map[string]interface{}{"AWS": "arn:aws:iam::565261360522:user/sys-devop-ms-deploy"}, // Replace with your account ID
+//				"Principal": map[string]interface{}{"AWS": "arn:aws:iam::***************:user/xxxxxxxxxxxxxxxxxxx"}, // Replace with your account ID
 //				"Action":    "kms:*",
 //				"Resource":  "*",
 //			},
 //			{
 //				"Sid":       "Allow access for Key Administrators",
 //				"Effect":    "Allow",
-//				"Principal": map[string]interface{}{"AWS": "arn:aws:iam::565261360522:user/sys-devop-ms-deploy"},
+//				"Principal": map[string]interface{}{"AWS": "arn:aws:iam::***************:user/xxxxxxxxxxxxxxxxxxx"},
 //				"Action": []string{
 //					"kms:Create*",
 //					"kms:Describe*",
@@ -471,7 +476,7 @@ func (k *KMS) DecryptViaCmkAes256(cipherText string) (plainText string, err erro
 //			{
 //				"Sid":       "Allow use of the key",
 //				"Effect":    "Allow",
-//				"Principal": map[string]interface{}{"AWS": "arn:aws:iam::565261360522:user/sys-devop-ms-deploy"},
+//				"Principal": map[string]interface{}{"AWS": "arn:aws:iam::***************:user/xxxxxxxxxxxxxxxxxxx"},
 //				"Action": []string{
 //					"kms:Encrypt",
 //					"kms:Decrypt",
@@ -484,7 +489,7 @@ func (k *KMS) DecryptViaCmkAes256(cipherText string) (plainText string, err erro
 //			{
 //				"Sid":       "Allow attachment of persistent resources",
 //				"Effect":    "Allow",
-//				"Principal": map[string]interface{}{"AWS": "arn:aws:iam::565261360522:user/sys-devop-ms-deploy"},
+//				"Principal": map[string]interface{}{"AWS": "arn:aws:iam::***************:user/xxxxxxxxxxxxxxxxxxx"},
 //				"Action": []string{
 //					"kms:CreateGrant",
 //					"kms:ListGrants",
@@ -499,7 +504,7 @@ func (k *KMS) DecryptViaCmkAes256(cipherText string) (plainText string, err erro
 //			},
 //		},
 //	}
-func (k *KMS) GenerateEncryptionDecryptionKeyRsa2048(keyName string, keyPolicy interface{}) (encryptedOutput *kms.CreateKeyOutput, err error) {
+func (k *KMS) GenerateEncryptionDecryptionKeyRsa2048(keyName string, keyPolicyJSON string) (encryptedOutput *kms.CreateKeyOutput, err error) {
 	var segCtx context.Context
 	segCtx = nil
 
@@ -523,23 +528,18 @@ func (k *KMS) GenerateEncryptionDecryptionKeyRsa2048(keyName string, keyPolicy i
 		return nil, err
 	}
 
-	keyPolicyJSON, err := json.Marshal(keyPolicy)
-	if err != nil {
-		return nil, err
-	}
-
 	var e error
 
 	if segCtx == nil {
 		encryptedOutput, e = k.kmsClient.CreateKey(&kms.CreateKeyInput{
-			Description: aws.String("Aldelo Common RSA 2048 Key Creation"),
+			Description: aws.String("Common RSA 2048 Key Creation"),
 			KeySpec:     aws.String(kms.KeySpecRsa2048),
 			KeyUsage:    aws.String(kms.KeyUsageTypeEncryptDecrypt),
 			Policy:      aws.String(string(keyPolicyJSON)),
 		})
 	} else {
 		encryptedOutput, e = k.kmsClient.CreateKeyWithContext(segCtx, &kms.CreateKeyInput{
-			Description: aws.String("Aldelo Common RSA 2048 Key Creation"),
+			Description: aws.String("Common RSA 2048 Key Creation"),
 			KeySpec:     aws.String(kms.KeySpecRsa2048),
 			KeyUsage:    aws.String(kms.KeyUsageTypeEncryptDecrypt),
 			Policy:      aws.String(string(keyPolicyJSON)),
@@ -600,14 +600,14 @@ func (k *KMS) GenerateSignVerifyKeyRsa2048(keyName string, keyPolicy interface{}
 
 	if segCtx == nil {
 		encryptedOutput, e = k.kmsClient.CreateKey(&kms.CreateKeyInput{
-			Description: aws.String("Aldelo Common RSA 2048 Key Creation"),
+			Description: aws.String("Common RSA 2048 Key Creation"),
 			KeySpec:     aws.String(kms.KeySpecRsa2048),
 			KeyUsage:    aws.String(kms.KeyUsageTypeSignVerify),
 			Policy:      aws.String(string(keyPolicyJSON)),
 		})
 	} else {
 		encryptedOutput, e = k.kmsClient.CreateKeyWithContext(segCtx, &kms.CreateKeyInput{
-			Description: aws.String("Aldelo Common RSA 2048 Key Creation"),
+			Description: aws.String("Common RSA 2048 Key Creation"),
 			KeySpec:     aws.String(kms.KeySpecRsa2048),
 			KeyUsage:    aws.String(kms.KeyUsageTypeSignVerify),
 			Policy:      aws.String(string(keyPolicyJSON)),
@@ -1480,4 +1480,95 @@ func (k *KMS) DecryptWithDataKeyAes256(cipherText string, cipherKey string) (pla
 
 	// return decrypted data
 	return plainText, nil
+}
+
+func (k *KMS) ImportECCP256SignVerifyKey(keyAlias, keyPolicyJson string, eccPvk *ecdsa.PrivateKey) (keyArn string, err error) {
+	// validate
+	if k.kmsClient == nil {
+		err = errors.New("ImportECCP256SignVerifyKey with KMS Failed: " + "KMS Client is Required")
+		return "", err
+	}
+
+	svc := k.kmsClient
+
+	cInput := &kms.CreateKeyInput{
+		BypassPolicyLockoutSafetyCheck: nil,
+		CustomKeyStoreId:               nil,
+		Description:                    nil,
+		KeySpec:                        aws.String(kms.KeySpecEccNistP256),
+		KeyUsage:                       aws.String(kms.KeyUsageTypeSignVerify),
+		MultiRegion:                    aws.Bool(false),
+		Origin:                         aws.String(kms.OriginTypeExternal),
+		Policy:                         aws.String(keyPolicyJson),
+		Tags:                           nil,
+		XksKeyId:                       nil,
+	}
+
+	cOutput, err := svc.CreateKey(cInput)
+	if err != nil {
+		return "", err
+	}
+
+	keyID := aws.StringValue(cOutput.KeyMetadata.KeyId)
+
+	if keyID == "" {
+		return "", errors.New("key ID is empty")
+	}
+
+	// Step 1: Get an import token and public key from KMS
+	getParams := &kms.GetParametersForImportInput{
+		KeyId:             aws.String(keyID),
+		WrappingAlgorithm: aws.String(kms.AlgorithmSpecRsaesOaepSha256),
+		WrappingKeySpec:   aws.String(kms.KeySpecRsa2048),
+	}
+	resp, err := svc.GetParametersForImport(getParams)
+	if err != nil {
+		return "", err
+	}
+
+	derKey, err := x509.MarshalPKCS8PrivateKey(eccPvk)
+	if err != nil {
+		return "", err
+	}
+
+	// Step 2: Encrypt the key material using the provided public key
+	pubKey, err := x509.ParsePKIXPublicKey(resp.PublicKey)
+	if err != nil {
+		return "", err
+	}
+	rsaPubKey, ok := pubKey.(*rsa.PublicKey)
+	if !ok {
+		return "", errors.New("public key is not RSA")
+	}
+	encryptedKeyMaterial, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, rsaPubKey, derKey, nil)
+	if err != nil {
+		return "", err
+	}
+
+	//Step 3: Import the encrypted key material into KMS
+	importParams := &kms.ImportKeyMaterialInput{
+		EncryptedKeyMaterial: encryptedKeyMaterial,
+		ExpirationModel:      aws.String(kms.ExpirationModelTypeKeyMaterialDoesNotExpire),
+		ImportToken:          resp.ImportToken,
+		KeyId:                aws.String(keyID),
+		ValidTo:              nil,
+	}
+	_, err = svc.ImportKeyMaterial(importParams)
+	if err != nil {
+		return "", err
+	}
+
+	aliasName := "alias/" + keyAlias // Change to your desired alias name
+
+	aliasInput := &kms.CreateAliasInput{
+		AliasName:   aws.String(aliasName),
+		TargetKeyId: aws.String(keyID),
+	}
+
+	_, err = k.kmsClient.CreateAlias(aliasInput)
+	if err != nil {
+		return "", err
+	}
+
+	return aws.StringValue(cOutput.KeyMetadata.Arn), nil
 }
